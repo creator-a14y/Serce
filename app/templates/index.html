@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Yapay Zeka Asistanı</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; display: flex; justify-content: center; padding: 20px; }
+        #chatbox { width: 400px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; }
+        #chatlog { height: 400px; padding: 20px; overflow-y: scroll; border-bottom: 1px solid #eee; }
+        #userinput { width: 100%; padding: 15px; border: none; outline: none; box-sizing: border-box; }
+        .botText { color: #007bff; margin: 5px 0; }
+        .userText { text-align: right; color: #28a745; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div id="chatbox">
+        <div id="chatlog">
+            <p class="botText"><span>Merhaba! Size nasıl yardımcı olabilirim?</span></p>
+        </div>
+        <input id="userinput" type="text" name="msg" placeholder="Mesajınızı buraya yazın...">
+    </div>
+
+    <script>
+        function getBotResponse() {
+            var rawText = $("#userinput").val();
+            var userHtml = '<p class="userText"><span>' + rawText + "</span></p>";
+            $("#userinput").val("");
+            $("#chatlog").append(userHtml);
+            
+            $.get("/get", { msg: rawText }).done(function(data) {
+                var botHtml = '<p class="botText"><span>' + data.response + "</span></p>";
+                $("#chatlog").append(botHtml);
+                $("#chatlog").stop().animate({ scrollTop: $("#chatlog")[0].scrollHeight }, 1000);
+            });
+        }
+
+        $("#userinput").keypress(function(e) {
+            if (e.which == 13) { getBotResponse(); }
+        });
+    </script>
+</body>
+</html>
