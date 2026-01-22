@@ -1,39 +1,47 @@
-from flask import Flask, render_template, request, jsonify
-from chatbot_logic import ChatBot
+from flask import Flask, request, render_template, jsonify
 import os
+from chatbot_logic import ChatBot
 
 app = Flask(__name__)
 bot = ChatBot()
 
-@app.route("/")
+# Parola Yönetimi: Buraya istediğin kadar kullanıcı ekleyebilirsin
+# 'admin' şifresini Render Environment Variables'dan (ADMIN_PASS) alır.
+DEBUG_PASSWORDS = {
+    "admin": os.environ.get("ADMIN_PASS", "serce123"),
+    "misafir": "serce2026"
+}
+
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-# app.py içindeki ilgili rota
-@app.route("/get")
+@app.route('/debug')
+def debug_page():
+    return render_template('debug.html')
+
+@app.route('/get')
 def get_bot_response():
-    user_msg = request.args.get('msg', '').strip()
-    
-    if user_msg.startswith("Öğret:"):
-        try:
-            # Format: Öğret: konu_adı | verilecek_cevap
-            content = user_msg.replace("Öğret:", "").split("|")
-            konu = content[0].strip()
-            cevap = content[1].strip()
-            
-            ogrenilen_soru = bot.teach(konu, cevap)
-            return jsonify({
-                "response": f"Harika! Artık biri '{ogrenilen_soru}' derse, ona '{cevap}' diyeceğim."
-            })
-        except:
-            return jsonify({"response": "Hata! Lütfen şu formatta öğret: 'Öğret: konu | cevap'"})
+    user_text = request.args.get('msg')
+    if not user_text:
+        return jsonify({"response": "Bir şey yazmadınız..."})
+    return jsonify({"response": bot.predict(user_text)})
 
-    response = bot.predict(user_msg)
-    if not response:
-        return jsonify({"response": "Bunu henüz bilmiyorum. 'Öğret: konu | cevap' diyerek bana öğretebilirsin!"})
-        
-    return jsonify({"response": response})
+@app.route('/teach_debug', methods=['POST'])
+def teach_bot():
+    data = request.json
+    user = data.get('user')
+    password = data.get('password')
+    etiket = data.get('tag')
+    cevap = data.get('response')
+
+    # Yetki Kontrolü
+    if user in DEBUG_PASSWORDS and DEBUG_PASSWORDS[user] == password:
+        # chatbot_logic içindeki teach fonksiyonunu çağırır
+        soru = bot.teach(etiket, cevap)
+        return jsonify({"status": "success", "message": f"'{soru}' kavramı başarıyla öğretildi!"})
+    else:
+        return jsonify({"status": "error", "message": "Hatalı kullanıcı adı veya parola!"}), 403
 
 if __name__ == "__main__":
-
-    app.run(debug=True, port=5000)
+    app.run()
