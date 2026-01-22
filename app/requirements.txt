@@ -3,4 +3,5 @@ nltk
 numpy
 scikit-learn
 gunicorn
-google-generativeai
+google-generativeai>=0.7.2
+
