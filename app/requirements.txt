@@ -3,3 +3,4 @@ nltk
 numpy
 scikit-learn
 gunicorn
+psycopg2-binary
