@@ -1,5 +1,6 @@
 import sqlite3
-import string
+import os
+import google.generativeai as genai
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -7,8 +8,16 @@ class ChatBot:
     def __init__(self, db_path='chatbot.db'):
         self.db_path = db_path
         self.son_anlasilmayan_mesaj = ""
-        # Hafif zeka motoru (TF-IDF)
         self.vectorizer = TfidfVectorizer()
+        
+        # Gemini API Ayarı
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+        else:
+            self.model = None
+
         self.init_db()
 
     def init_db(self):
@@ -21,34 +30,36 @@ class ChatBot:
         conn.close()
 
     def predict(self, user_sentence):
+        # Önce Yerel Hafızaya Bak (Kosinüs Benzerliği)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT P.PatternText, R.ResponseText FROM Patterns P JOIN Responses R ON P.IntentId = R.IntentId")
         rows = cursor.fetchall()
         conn.close()
 
-        if not rows:
-            self.son_anlasilmayan_mesaj = user_sentence
-            return None
+        if rows:
+            patterns = [row[0] for row in rows]
+            responses = [row[1] for row in rows]
+            tfidf = self.vectorizer.fit_transform(patterns + [user_sentence])
+            similarities = cosine_similarity(tfidf[-1], tfidf[:-1])[0]
+            
+            # Eğer benzerlik %30'dan fazlaysa yerel cevabı ver
+            if max(similarities) > 0.30:
+                return responses[similarities.argmax()]
 
-        patterns = [row[0] for row in rows]
-        responses = [row[1] for row in rows]
-        
-        # Cümleleri karşılaştırma (Kosinüs Benzerliği)
-        # Formül: cos(theta) = (A . B) / (||A|| ||B||)
-        tfidf = self.vectorizer.fit_transform(patterns + [user_sentence])
-        similarities = cosine_similarity(tfidf[-1], tfidf[:-1])[0]
-        
-        en_yuksek_skor = max(similarities)
-        en_iyi_index = similarities.argmax()
-
-        if en_yuksek_skor > 0.25: # TF-IDF için 0.40 güçlü bir benzerliktir
-            return responses[en_iyi_index]
+        # Eğer yerel hafızada yoksa Gemini'ye sor
+        if self.model:
+            try:
+                response = self.model.generate_content(user_sentence)
+                return response.text
+            except Exception as e:
+                return f"Gemini'ye bağlanırken bir hata oluştu: {str(e)}"
         
         self.son_anlasilmayan_mesaj = user_sentence
-        return None
+        return "Bunu henüz bilmiyorum, öğretmek ister misin?"
 
     def teach(self, etiket, cevap):
+        # Öğretme mantığı aynı kalıyor...
         soru = self.son_anlasilmayan_mesaj if self.son_anlasilmayan_mesaj else etiket
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -61,4 +72,3 @@ class ChatBot:
         conn.close()
         self.son_anlasilmayan_mesaj = ""
         return soru
-
