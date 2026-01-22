@@ -42,7 +42,7 @@ class ChatBot:
         en_yuksek_skor = max(similarities)
         en_iyi_index = similarities.argmax()
 
-        if en_yuksek_skor > 0.40: # TF-IDF için 0.40 güçlü bir benzerliktir
+        if en_yuksek_skor > 0.25: # TF-IDF için 0.40 güçlü bir benzerliktir
             return responses[en_iyi_index]
         
         self.son_anlasilmayan_mesaj = user_sentence
@@ -61,3 +61,4 @@ class ChatBot:
         conn.close()
         self.son_anlasilmayan_mesaj = ""
         return soru
+
