@@ -1,58 +1,50 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serce AI</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; }
-        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .msg { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 15px; animation: fadeIn 0.3s; }
-        .user { align-self: flex-end; background: #0084ff; color: white; border-bottom-right-radius: 2px; }
-        .bot { align-self: flex-start; background: white; color: #1c1e21; border-bottom-left-radius: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .input-area { background: white; padding: 20px; border-top: 1px solid #ddd; }
-        .wrapper { max-width: 700px; margin: auto; display: flex; gap: 10px; }
-        input { border-radius: 25px !important; border: 1px solid #ddd !important; padding: 10px 20px !important; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .debug-btn { position: fixed; bottom: 5px; right: 5px; color: #ccc; text-decoration: none; font-size: 10px; }
-    </style>
-</head>
-<body>
+from flask import Flask, request, render_template, jsonify
+import os
+import json # JSON formatını okumak için ekledik
+from chatbot_logic import ChatBot
 
-<div id="chat-container">
-    <div class="msg bot">Merhaba! Ben Serce. Sana nasıl yardımcı olabilirim? 🐦</div>
-</div>
+app = Flask(__name__)
+bot = ChatBot()
 
-<div class="input-area">
-    <div class="wrapper">
-        <input type="text" id="user-input" class="form-control" placeholder="Bir mesaj yazın..." onkeypress="if(event.key === 'Enter') send()">
-        <button onclick="send()" class="btn btn-primary rounded-circle"><i class="fa-solid fa-paper-plane"></i></button>
-    </div>
-</div>
+# Render'daki 'DEBUG_USERS' değişkenini oku
+# Eğer boşsa varsayılan olarak admin:serce123 kullanır
+users_json = os.environ.get("DEBUG_USERS", '{"admin": "serce123"}')
 
-<a href="/debug" class="debug-btn">Yönetim</a>
+try:
+    # JSON formatındaki metni Python sözlüğüne çevirir
+    DEBUG_PASSWORDS = json.loads(users_json)
+except Exception as e:
+    print(f"Şifre listesi okunurken hata: {e}")
+    DEBUG_PASSWORDS = {"admin": "serce123"}
 
-<script>
-    async function send() {
-        const input = document.getElementById('user-input');
-        const box = document.getElementById('chat-container');
-        if(!input.value.trim()) return;
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-        box.innerHTML += `<div class="msg user">${input.value}</div>`;
-        const text = input.value;
-        input.value = '';
-        box.scrollTop = box.scrollHeight;
+@app.route('/debug')
+def debug_page():
+    return render_template('debug.html')
 
-        const res = await fetch('/get?msg=' + encodeURIComponent(text));
-        const data = await res.json();
-        
-        setTimeout(() => {
-            box.innerHTML += `<div class="msg bot">${data.response}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }, 300);
-    }
-</script>
-</body>
-</html>
+@app.route('/get')
+def get_bot_response():
+    user_text = request.args.get('msg')
+    if not user_text:
+        return jsonify({"response": "..."})
+    return jsonify({"response": bot.predict(user_text)})
+
+@app.route('/teach_debug', methods=['POST'])
+def teach_bot():
+    data = request.json
+    user = data.get('user')
+    password = data.get('password')
+    etiket = data.get('tag')
+    cevap = data.get('response')
+
+    if user in DEBUG_PASSWORDS and str(DEBUG_PASSWORDS[user]) == str(password):
+        soru = bot.teach(etiket, cevap)
+        return jsonify({"status": "success", "message": f"'{soru}' başarıyla kaydedildi!"})
+    else:
+        return jsonify({"status": "error", "message": "Yetkisiz erişim!"}), 403
+
+if __name__ == "__main__":
+    app.run()
