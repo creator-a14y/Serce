@@ -23,9 +23,15 @@ def debug_page():
 @app.route('/get')
 def get_bot_response():
     user_text = request.args.get('msg')
-    if not user_text:
-        return jsonify({"response": "Bir şey yazmadınız..."})
-    return jsonify({"response": bot.predict(user_text)})
+    mode = request.args.get('mode', 'public') # Modu kontrol et
+    
+    raw_response = bot.predict(user_text)
+    
+    # Eğer ana sayfadaysak ve bot "Öğret" diyorsa, mesajı sadeleştir
+    if mode == 'public' and "Öğret:" in raw_response:
+        return jsonify({"response": "Üzgünüm, bunu henüz öğrenemedim. Size başka nasıl yardımcı olabilirim? 🐦"})
+    
+    return jsonify({"response": raw_response})
 
 @app.route('/teach_debug', methods=['POST'])
 def teach_bot():
@@ -45,3 +51,4 @@ def teach_bot():
 
 if __name__ == "__main__":
     app.run()
+
