@@ -1,50 +1,37 @@
-from flask import Flask, request, render_template, jsonify
-import os
-import json # JSON formatını okumak için ekledik
-from chatbot_logic import ChatBot
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Serce AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="chat-container">
+        <div class="message bot">Merhaba! Ben Serce. Bugün size nasıl yardımcı olabilirim?</div>
+    </div>
+    <div class="input-area">
+        <div class="wrapper">
+            <input type="text" id="user-input" placeholder="Bir şeyler yazın..." onkeypress="if(event.key === 'Enter') send()">
+            <button onclick="send()" class="btn btn-primary rounded-pill px-4">Gönder</button>
+        </div>
+    </div>
+    <a href="/debug" style="position:fixed; bottom:5px; right:5px; opacity:0.1; font-size:10px; color:black;">Admin</a>
 
-app = Flask(__name__)
-bot = ChatBot()
+    <script>
+        async function send() {
+            const inp = document.getElementById('user-input');
+            const box = document.getElementById('chat-container');
+            if(!inp.value.trim()) return;
+            box.innerHTML += `<div class="message user">${inp.value}</div>`;
+            const txt = inp.value; inp.value = '';
+            box.scrollTop = box.scrollHeight;
 
-# Render'daki 'DEBUG_USERS' değişkenini oku
-# Eğer boşsa varsayılan olarak admin:serce123 kullanır
-users_json = os.environ.get("DEBUG_USERS", '{"admin": "serce123"}')
-
-try:
-    # JSON formatındaki metni Python sözlüğüne çevirir
-    DEBUG_PASSWORDS = json.loads(users_json)
-except Exception as e:
-    print(f"Şifre listesi okunurken hata: {e}")
-    DEBUG_PASSWORDS = {"admin": "serce123"}
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/debug')
-def debug_page():
-    return render_template('debug.html')
-
-@app.route('/get')
-def get_bot_response():
-    user_text = request.args.get('msg')
-    if not user_text:
-        return jsonify({"response": "..."})
-    return jsonify({"response": bot.predict(user_text)})
-
-@app.route('/teach_debug', methods=['POST'])
-def teach_bot():
-    data = request.json
-    user = data.get('user')
-    password = data.get('password')
-    etiket = data.get('tag')
-    cevap = data.get('response')
-
-    if user in DEBUG_PASSWORDS and str(DEBUG_PASSWORDS[user]) == str(password):
-        soru = bot.teach(etiket, cevap)
-        return jsonify({"status": "success", "message": f"'{soru}' başarıyla kaydedildi!"})
-    else:
-        return jsonify({"status": "error", "message": "Yetkisiz erişim!"}), 403
-
-if __name__ == "__main__":
-    app.run()
+            const res = await fetch(`/get?msg=${encodeURIComponent(txt)}&mode=public`);
+            const data = await res.json();
+            box.innerHTML += `<div class="message bot">${data.response}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+    </script>
+</body>
+</html>
