@@ -2,68 +2,53 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Serce AI - Debug & Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serce Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        .split-screen { display: flex; height: 100vh; }
-        .test-side { flex: 1; border-right: 2px solid #ddd; display: flex; flex-direction: column; }
-        .teach-side { flex: 1; background: #2d3436; color: white; padding: 40px; overflow-y: auto; }
-        .teach-side input, .teach-side textarea { background: #3d4446 !important; color: white !important; border: none; margin-bottom: 15px; }
-    </style>
+        .split { display: flex; height: 100vh; flex-direction: row; }
+        .test-side { flex: 1.2; border-right: 1px solid #ddd; display: flex; flex-direction: column; background: #fff; }
+        .teach-side { flex: 1; background: #2c3e50; color: white; padding: 25px; overflow-y: auto; }
+        @media (max-width: 768px) { .split { flex-direction: column; } .test-side { height: 350px; } }
+        input, textarea { background: #34495e !important; color: white !important; border: none !important; margin-bottom: 10px; }
+    </script>
 </head>
 <body>
-    <div class="split-screen">
+    <div class="split">
         <div class="test-side">
-            <div style="background:#eee; padding:10px; text-align:center; font-weight:bold;">🤖 CANLI TEST EKRANI</div>
-            <div id="chat-container"></div>
-            <div class="input-area" style="position:relative; width:100%;">
-                <div class="wrapper">
-                    <input type="text" id="test-input" placeholder="Botu test et..." onkeypress="if(event.key === 'Enter') test()">
-                </div>
-            </div>
+            <div class="p-2 bg-light text-center small fw-bold">CANLI TEST ÜNİTESİ</div>
+            <div id="chat-container" style="margin-bottom:0;"></div>
+            <div class="input-area" style="position:static;"><div class="wrapper">
+                <input type="text" id="ti" onkeypress="if(event.key==='Enter') test()" placeholder="Botu dene...">
+            </div></div>
         </div>
-
         <div class="teach-side">
-            <h4>🚀 Hafıza Yönetimi</h4><hr>
-            <input type="text" id="user" class="form-control" placeholder="Admin Kullanıcı Adı">
-            <input type="password" id="pass" class="form-control" placeholder="Admin Şifresi">
-            <div style="margin:20px 0; border-top:1px solid #555;"></div>
-            <input type="text" id="tag" class="form-control" placeholder="Hangi soruya/konuya cevap verecek?">
-            <textarea id="resp" class="form-control" rows="4" placeholder="Vereceği tam cevap..."></textarea>
-            <button onclick="save()" class="btn btn-danger w-100 fw-bold">VERİYİ ENJEKTE ET</button>
-            <div id="status" class="mt-3 text-center"></div>
+            <h5>🚀 Hafıza Yönetimi</h5>
+            <input type="text" id="u" class="form-control" placeholder="Kullanıcı">
+            <input type="password" id="p" class="form-control" placeholder="Parola">
+            <hr>
+            <input type="text" id="t" class="form-control" placeholder="Soru/Etiket">
+            <textarea id="r" class="form-control" rows="3" placeholder="Cevap"></textarea>
+            <button onclick="save()" class="btn btn-warning w-100 fw-bold">KAYDET</button>
+            <div id="st" class="mt-3 text-center small"></div>
         </div>
     </div>
-
     <script>
-        async function test() {
-            const inp = document.getElementById('test-input');
-            const box = document.getElementById('chat-container');
-            if(!inp.value.trim()) return;
-            box.innerHTML += `<div class="message user">${inp.value}</div>`;
-            const res = await fetch(`/get?msg=${encodeURIComponent(inp.value)}&mode=debug`);
-            const data = await res.json();
-            box.innerHTML += `<div class="message bot"><b>System (Debug):</b><br>${data.response}</div>`;
-            inp.value = ''; box.scrollTop = box.scrollHeight;
+        async function test(){
+            const i=document.getElementById('ti'), c=document.getElementById('chat-container');
+            c.innerHTML+=`<div class="message user">${i.value}</div>`;
+            const r=await fetch(`/get?msg=${encodeURIComponent(i.value)}&mode=debug`);
+            const d=await r.json();
+            c.innerHTML+=`<div class="message bot"><b>Debug:</b> ${d.response}</div>`;
+            i.value=''; c.scrollTop=c.scrollHeight;
         }
-
-        async function save() {
-            const s = document.getElementById('status');
-            const payload = {
-                user: document.getElementById('user').value,
-                password: document.getElementById('pass').value,
-                tag: document.getElementById('tag').value,
-                response: document.getElementById('resp').value
-            };
-            const res = await fetch('/teach_debug', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            s.innerText = data.message;
-            s.className = res.ok ? "text-success" : "text-danger";
+        async function save(){
+            const s=document.getElementById('st');
+            const d={user:document.getElementById('u').value,password:document.getElementById('p').value,tag:document.getElementById('t').value,response:document.getElementById('r').value};
+            const res=await fetch('/teach_debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+            const data=await res.json();
+            s.innerText=data.message; s.style.color=res.ok?"#2ecc71":"#e74c3c";
         }
     </script>
 </body>
